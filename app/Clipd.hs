@@ -6,6 +6,7 @@ import           Control.Concurrent     (threadDelay)
 import           Control.Monad
 import           Control.Monad.State
 import           Data.Maybe             (fromJust, fromMaybe)
+import qualified Data.Text              as T
 import           Database.SQLite.Simple (Only (..), close, execute, execute_,
                                          open)
 import           System.Clipboard       (getClipboardString)
@@ -59,7 +60,7 @@ parseArgs = do
             return (foldl (flip id) defOpts opts)
         (_, _, errs)   -> ioError (userError (concat errs ++ helpMessage))
 
-insertRecord :: Options -> String -> IO ()
+insertRecord :: Options -> T.Text -> IO ()
 insertRecord opts s = do
     conn <- open $ optDatabase opts
     execute conn "\
@@ -79,20 +80,22 @@ initialize opts = do
         \ );"
     close conn
 
-run :: Options -> String -> IO ((), String)
+run :: Options -> T.Text -> IO ((), T.Text)
 run opts s = do
-    s' <- fromMaybe "" <$> getClipboardString
-    when (s /= s') $ do
-        when (optVerbose opts) $ putStrLn s'
+    s' <- T.pack . fromMaybe "" <$> getClipboardString
+    when (check s s') $ do
+        when (optVerbose opts) $ putStrLn $ T.unpack s'
         insertRecord opts s'
     threadDelay $ optInterval opts * 1000
     return ((), s')
+  where
+    check old new = old /= new && (not . T.null . T.strip) new
 
 main :: IO ()
 main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
     initialize opts
-    s <- fromMaybe "" <$> getClipboardString
+    s <- T.pack . fromMaybe "" <$> getClipboardString
     runStateT (forever (StateT (run opts))) s
     return ()

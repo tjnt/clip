@@ -33,6 +33,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - text
     - directory
     - sqlite-simple
     - Clipboard
@@ -45,6 +46,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - mtl
+    - text
     - filepath
     - directory
     - sqlite-simple

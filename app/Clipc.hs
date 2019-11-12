@@ -3,6 +3,7 @@
 module Main where
 
 import           Control.Monad
+import qualified Data.Text              as T
 import           Database.SQLite.Simple (FromRow (..), Only (..), close, field,
                                          open, query, query_)
 import           System.Clipboard       (setClipboardString)
@@ -62,7 +63,7 @@ parseArgs = do
             return (foldl (flip id) defOpts opts)
         (_, _, errs)   -> ioError (userError (concat errs ++ helpMessage))
 
-data History = History Int String String deriving (Show)
+data History = History Int T.Text T.Text deriving (Show)
 
 instance FromRow History where
     fromRow = History <$> field <*> field <*> field
@@ -73,25 +74,21 @@ list opts = do
     rs <- query_ conn "\
         \ SELECT * FROM history ORDER BY time desc;" :: IO [History]
     mapM_ (\(History id time value) ->
-        printf "%d %s\n" id (delCrLf value)) rs
+        printf "%d %s\n" id (replaceCrLf value)) rs
     close conn
   where
-    delCrLf = map (\c ->
-        case c of
-            '\r' -> ' '
-            '\n' -> ' '
-            _    -> c)
+    replaceCrLf = T.replace "\r" "\\r" . T.replace "\n" "\\n"
 
 select :: Options -> Int -> IO ()
 select opts n = do
     conn <- open $ optDatabase opts
     rs <- query conn "\
         \ SELECT value FROM history WHERE id = ?;"
-        $ Only n :: IO [Only String]
+        $ Only n :: IO [Only T.Text]
     case rs of
         [] -> return ()
         _  -> let Only r = head rs
-               in setClipboardString r
+               in setClipboardString $ T.unpack r
     close conn
 
 main :: IO ()
