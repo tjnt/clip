@@ -4,8 +4,9 @@ module Main where
 
 import           Control.Monad
 import qualified Data.Text              as T
-import           Database.SQLite.Simple (FromRow (..), Only (..), close, field,
-                                         open, query, query_)
+import           Database.SQLite.Simple (Connection (..), FromRow (..),
+                                         Only (..), close, field, open, query, execute,
+                                         query_)
 import           System.Clipboard       (setClipboardString)
 import           System.Console.GetOpt
 import           System.Directory       (XdgDirectory (..),
@@ -68,20 +69,23 @@ data History = History Int T.Text T.Text deriving (Show)
 instance FromRow History where
     fromRow = History <$> field <*> field <*> field
 
-list :: Options -> IO ()
-list opts = do
-    conn <- open $ optDatabase opts
+list :: Connection -> IO ()
+list conn = do
     rs <- query_ conn "\
         \ SELECT * FROM history ORDER BY time desc;" :: IO [History]
     mapM_ (\(History id time value) ->
         printf "%d %s\n" id (replaceCrLf value)) rs
-    close conn
   where
     replaceCrLf = T.replace "\r" "\\r" . T.replace "\n" "\\n"
 
-select :: Options -> Int -> IO ()
-select opts n = do
-    conn <- open $ optDatabase opts
+delete :: Connection -> Int -> IO ()
+delete conn n =
+    execute conn "\
+        \ DELETE FROM history WHERE id = ?;"
+        $ Only n
+
+select :: Connection -> Int -> IO ()
+select conn n = do
     rs <- query conn "\
         \ SELECT value FROM history WHERE id = ?;"
         $ Only n :: IO [Only T.Text]
@@ -89,13 +93,14 @@ select opts n = do
         [] -> return ()
         _  -> let Only r = head rs
                in setClipboardString $ T.unpack r
-    close conn
 
 main :: IO ()
 main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
+    conn <- open $ optDatabase opts
     case optFlag opts of
         FlagNone     -> return ()
-        FlagList     -> list opts
-        FlagSelect n -> select opts n
+        FlagList     -> list conn
+        FlagSelect n -> select conn n
+    close conn

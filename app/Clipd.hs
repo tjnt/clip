@@ -7,8 +7,8 @@ import           Control.Monad
 import           Control.Monad.State
 import           Data.Maybe             (fromJust, fromMaybe)
 import qualified Data.Text              as T
-import           Database.SQLite.Simple (Only (..), close, execute, execute_,
-                                         open)
+import           Database.SQLite.Simple (Connection (..), Only (..), close,
+                                         execute, execute_, open)
 import           System.Clipboard       (getClipboardString)
 import           System.Console.GetOpt
 import           System.Directory       (XdgDirectory (..),
@@ -60,32 +60,27 @@ parseArgs = do
             return (foldl (flip id) defOpts opts)
         (_, _, errs)   -> ioError (userError (concat errs ++ helpMessage))
 
-insertRecord :: Options -> T.Text -> IO ()
-insertRecord opts s = do
-    conn <- open $ optDatabase opts
+insertRecord :: Connection -> T.Text -> IO ()
+insertRecord conn s =
     execute conn "\
         \ INSERT INTO history (time, value) VALUES (CURRENT_TIMESTAMP, ?);"
         $ Only s
-    close conn
 
-initialize :: Options -> IO ()
-initialize opts = do
-    createDirectoryIfMissing True $ takeDirectory $ optDatabase opts
-    conn <- open $ optDatabase opts
+create :: Connection -> IO ()
+create conn =
     execute_ conn "\
         \ CREATE TABLE IF NOT EXISTS history ( \
         \   id INTEGER NOT NULL PRIMARY KEY, \
         \   time TEXT NOT NULL, \
         \   value BLOB NOT NULL \
         \ );"
-    close conn
 
-run :: Options -> T.Text -> IO ((), T.Text)
-run opts s = do
+run :: Options -> Connection -> T.Text -> IO ((), T.Text)
+run opts conn s = do
     s' <- T.pack . fromMaybe "" <$> getClipboardString
     when (check s s') $ do
         when (optVerbose opts) $ putStrLn $ T.unpack s'
-        insertRecord opts s'
+        insertRecord conn s'
     threadDelay $ optInterval opts * 1000
     return ((), s')
   where
@@ -95,7 +90,9 @@ main :: IO ()
 main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
-    initialize opts
+    createDirectoryIfMissing True $ takeDirectory $ optDatabase opts
+    conn <- open $ optDatabase opts
+    create conn
     s <- T.pack . fromMaybe "" <$> getClipboardString
-    runStateT (forever (StateT (run opts))) s
-    return ()
+    runStateT (forever (StateT (run opts conn))) s
+    close conn
