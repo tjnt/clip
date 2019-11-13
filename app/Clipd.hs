@@ -3,6 +3,7 @@
 module Main where
 
 import           Control.Concurrent     (threadDelay)
+import           Control.Exception      (bracket)
 import           Control.Monad
 import           Control.Monad.State
 import           Data.Maybe             (fromJust, fromMaybe)
@@ -91,8 +92,13 @@ main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
     createDirectoryIfMissing True $ takeDirectory $ optDatabase opts
-    conn <- open $ optDatabase opts
-    create conn
-    s <- T.pack . fromMaybe "" <$> getClipboardString
-    runStateT (forever (StateT (run opts conn))) s
-    close conn
+    bracket
+        (open $ optDatabase opts)
+        (\conn -> do
+            when (optVerbose opts) $ putStrLn "close ..."
+            close conn)
+        (\conn -> do
+            create conn
+            s <- T.pack . fromMaybe "" <$> getClipboardString
+            runStateT (forever (StateT (run opts conn))) s)
+    return ()

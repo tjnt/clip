@@ -2,11 +2,12 @@
 
 module Main where
 
+import           Control.Exception      (bracket)
 import           Control.Monad
 import qualified Data.Text              as T
 import           Database.SQLite.Simple (Connection (..), FromRow (..),
-                                         Only (..), close, field, open, query, execute,
-                                         query_)
+                                         Only (..), close, execute, field, open,
+                                         query, query_)
 import           System.Clipboard       (setClipboardString)
 import           System.Console.GetOpt
 import           System.Directory       (XdgDirectory (..),
@@ -98,9 +99,13 @@ main :: IO ()
 main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
-    conn <- open $ optDatabase opts
-    case optFlag opts of
-        FlagNone     -> return ()
-        FlagList     -> list conn
-        FlagSelect n -> select conn n
-    close conn
+    bracket
+        (open $ optDatabase opts)
+        (\conn -> do
+            when (optVerbose opts) $ putStrLn "close ..."
+            close conn)
+        (\conn ->
+            case optFlag opts of
+                FlagNone     -> return ()
+                FlagList     -> list conn
+                FlagSelect n -> select conn n)
