@@ -93,7 +93,8 @@ select conn n = do
     case rs of
         [] -> return ()
         _  -> let Only r = head rs
-               in setClipboardString $ T.unpack r
+               in do setClipboardString $ T.unpack r
+                     delete conn n
 
 main :: IO ()
 main = do
