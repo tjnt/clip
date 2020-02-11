@@ -93,4 +93,4 @@ Usage: clipc [OPTION...]
 
 ## License
 
-MIT
+BSD License (3-clause BSD License)
