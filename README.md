@@ -79,6 +79,7 @@ Usage: clipd [OPTION...]
 ```
 Usage: clipc [OPTION...]
   -l       --list           list clipboard history
+  -c       --clear          clear clipboard history
   -s ID    --select=ID      select clipboard record
   -d FILE  --database=FILE  database file path
   -v       --verbose        verbose output

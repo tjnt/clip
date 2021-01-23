@@ -6,8 +6,8 @@ import           Control.Exception      (bracket)
 import           Control.Monad
 import qualified Data.Text              as T
 import           Database.SQLite.Simple (Connection (..), FromRow (..),
-                                         Only (..), close, execute, field, open,
-                                         query, query_)
+                                         Only (..), close, execute, execute_,
+                                         field, open, query, query_)
 import           System.Clipboard       (setClipboardString)
 import           System.Console.GetOpt
 import           System.Directory       (XdgDirectory (..),
@@ -16,7 +16,7 @@ import           System.Directory       (XdgDirectory (..),
 import           System.Environment     (getArgs, getProgName)
 import           Text.Printf            (printf)
 
-data Flag = FlagNone | FlagList | FlagSelect Int
+data Flag = FlagNone | FlagList | FlagSelect Int | FlagClear
     deriving Show
 
 data Options = Options {
@@ -38,6 +38,9 @@ options =
       Option ['l'] ["list"]
         (NoArg (\opts -> opts { optFlag = FlagList }))
         "list clipboard history"
+    , Option ['c'] ["clear"]
+        (NoArg (\opts -> opts { optFlag = FlagClear }))
+        "clear clipboard history"
     , Option ['s'] ["select"]
         (ReqArg ((\v opts -> opts { optFlag = FlagSelect v }) . read) "ID")
         "select clipboard record"
@@ -79,6 +82,11 @@ list conn = do
   where
     replaceCrLf = T.replace "\r" "\\r" . T.replace "\n" "\\n"
 
+clear :: Connection -> IO ()
+clear conn = do
+    execute_ conn "DELETE FROM history;"
+    execute_ conn "VACUUM;"
+
 delete :: Connection -> Int -> IO ()
 delete conn n =
     execute conn "\
@@ -109,4 +117,5 @@ main = do
             case optFlag opts of
                 FlagNone     -> return ()
                 FlagList     -> list conn
+                FlagClear    -> clear conn
                 FlagSelect n -> select conn n)
