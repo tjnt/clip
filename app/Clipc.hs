@@ -16,7 +16,7 @@ import           System.Directory       (XdgDirectory (..),
 import           System.Environment     (getArgs, getProgName)
 import           Text.Printf            (printf)
 
-data Flag = FlagNone | FlagList | FlagSelect Int | FlagClear
+data Flag = FlagNone | FlagList | FlagSelect Int | FlagDelete Int | FlagClear
     deriving Show
 
 data Options = Options {
@@ -44,7 +44,10 @@ options =
     , Option ['s'] ["select"]
         (ReqArg ((\v opts -> opts { optFlag = FlagSelect v }) . read) "ID")
         "select clipboard record"
-    , Option ['d'] ["database"]
+    , Option ['d'] ["delete"]
+        (ReqArg ((\v opts -> opts { optFlag = FlagDelete v }) . read) "ID")
+        "select clipboard record"
+    , Option ['D'] ["database"]
         (ReqArg (\v opts -> opts { optDatabase = v }) "FILE")
         "database file path"
     , Option ['v'] ["verbose"]
@@ -118,4 +121,5 @@ main = do
                 FlagNone     -> return ()
                 FlagList     -> list conn
                 FlagClear    -> clear conn
-                FlagSelect n -> select conn n)
+                FlagSelect n -> select conn n
+                FlagDelete n -> delete conn n)
