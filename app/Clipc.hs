@@ -8,7 +8,7 @@ import qualified Data.Text              as T
 import           Database.SQLite.Simple (Connection (..), FromRow (..),
                                          Only (..), close, execute, execute_,
                                          field, open, query, query_)
-import           System.Clipboard       (setClipboardString)
+import           System.Clipboard       (getClipboardString, setClipboardString)
 import           System.Console.GetOpt
 import           System.Directory       (XdgDirectory (..),
                                          createDirectoryIfMissing,
@@ -103,9 +103,11 @@ select conn n = do
         $ Only n :: IO [Only T.Text]
     case rs of
         [] -> return ()
-        _  -> let Only r = head rs
-               in do setClipboardString $ T.unpack r
-                     delete conn n
+        _  -> let r = T.unpack . fromOnly . head $ rs
+               in getClipboardString >>= \m ->
+                     when (Just r /= m) $ do
+                         setClipboardString r
+                         delete conn n
 
 main :: IO ()
 main = do
