@@ -3,15 +3,16 @@
 module Main where
 
 import           Control.Exception      (bracket)
-import           Control.Monad
+import           Control.Monad          (when)
 import qualified Data.Text              as T
-import           Database.SQLite.Simple (Connection (..), FromRow (..),
-                                         Only (..), close, execute, execute_,
-                                         field, open, query, query_)
+import           Database.SQLite.Simple (Connection, FromRow (fromRow),
+                                         Only (Only, fromOnly), close, execute,
+                                         execute_, field, open, query, query_)
 import           System.Clipboard       (getClipboardString, setClipboardString)
-import           System.Console.GetOpt
-import           System.Directory       (XdgDirectory (..),
-                                         createDirectoryIfMissing,
+import           System.Console.GetOpt  (ArgDescr (NoArg, ReqArg),
+                                         ArgOrder (RequireOrder),
+                                         OptDescr (Option), getOpt, usageInfo)
+import           System.Directory       (XdgDirectory (XdgCache),
                                          getXdgDirectory)
 import           System.Environment     (getArgs, getProgName)
 import           Text.Printf            (printf)
@@ -80,8 +81,8 @@ list :: Connection -> IO ()
 list conn = do
     rs <- query_ conn "\
         \ SELECT * FROM history ORDER BY time desc;" :: IO [History]
-    mapM_ (\(History id time value) ->
-        printf "%d %s\n" id (replaceCrLf value)) rs
+    mapM_ (\(History id' _ value) ->
+        printf "%d %s\n" id' (replaceCrLf value)) rs
   where
     replaceCrLf = T.replace "\r" "\\r" . T.replace "\n" "\\n"
 

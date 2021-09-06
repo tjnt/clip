@@ -4,15 +4,17 @@ module Main where
 
 import           Control.Concurrent     (threadDelay)
 import           Control.Exception      (bracket)
-import           Control.Monad
-import           Control.Monad.State
-import           Data.Maybe             (fromJust, fromMaybe)
+import           Control.Monad          (forever, when)
+import           Control.Monad.State    (StateT (StateT), runStateT)
+import           Data.Maybe             (fromMaybe)
 import qualified Data.Text              as T
-import           Database.SQLite.Simple (Connection (..), Only (..), close,
+import           Database.SQLite.Simple (Connection, Only (Only), close,
                                          execute, execute_, open)
 import           System.Clipboard       (getClipboardString)
-import           System.Console.GetOpt
-import           System.Directory       (XdgDirectory (..),
+import           System.Console.GetOpt  (ArgDescr (NoArg, ReqArg),
+                                         ArgOrder (RequireOrder),
+                                         OptDescr (Option), getOpt, usageInfo)
+import           System.Directory       (XdgDirectory (XdgCache),
                                          createDirectoryIfMissing,
                                          getXdgDirectory)
 import           System.Environment     (getArgs, getProgName)
@@ -92,7 +94,7 @@ main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
     createDirectoryIfMissing True $ takeDirectory $ optDatabase opts
-    bracket
+    _ <- bracket
         (open $ optDatabase opts)
         (\conn -> do
             when (optVerbose opts) $ putStrLn "close ..."
