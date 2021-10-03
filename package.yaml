@@ -21,6 +21,10 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
+- text
+- directory
+- sqlite-simple
+- Clipboard
 
 ghc-options:
 - -Wall
@@ -40,10 +44,6 @@ executables:
     - -with-rtsopts=-N
     - -O2
     dependencies:
-    - text
-    - directory
-    - sqlite-simple
-    - Clipboard
     - clip
   clipd:
     main:                app/Clipd.hs
@@ -54,11 +54,7 @@ executables:
     - -O2
     dependencies:
     - mtl
-    - text
     - filepath
-    - directory
-    - sqlite-simple
-    - Clipboard
     - clip
 
 tests:
