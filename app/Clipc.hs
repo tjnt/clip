@@ -4,6 +4,7 @@ module Main where
 
 import           Control.Exception      (bracket)
 import           Control.Monad          (when)
+import           Data.Functor           ((<&>))
 import qualified Data.Text              as T
 import           Database.SQLite.Simple (Connection, FromRow (fromRow),
                                          Only (Only, fromOnly), close, execute,
@@ -26,12 +27,14 @@ data Options = Options {
     , optVerbose  :: Bool
     } deriving Show
 
-defaultOptions :: Options
-defaultOptions = Options {
-      optFlag     = FlagNone
-    , optDatabase = ""
-    , optVerbose  = False
-    }
+defaultOptions :: IO Options
+defaultOptions = do
+    cacheDir <- (++ "/clip.db") <$> getXdgDirectory XdgCache "clip"
+    return Options
+        { optFlag     = FlagNone
+        , optDatabase = cacheDir
+        , optVerbose  = False
+        }
 
 options :: [OptDescr (Options -> Options)]
 options =
@@ -63,13 +66,7 @@ parseArgs = do
     let header = "Usage: " ++ progName ++ " [OPTION...]"
         helpMessage = usageInfo header options
     case getOpt RequireOrder options argv of
-        (opts, [], []) -> do
-            cache <- getXdgDirectory XdgCache "clip"
-            let defOpts =
-                    defaultOptions {
-                        optDatabase = cache ++ "/clip.db"
-                    }
-            return (foldl (flip id) defOpts opts)
+        (opts, [], []) -> defaultOptions <&> \d -> foldl (flip id) d opts
         (_, _, errs)   -> ioError (userError (concat errs ++ helpMessage))
 
 data History = History Int T.Text T.Text deriving (Show)
