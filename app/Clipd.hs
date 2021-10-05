@@ -3,13 +3,13 @@
 module Main where
 
 import           Control.Concurrent     (threadDelay)
-import           Control.Exception      (bracket)
-import           Control.Monad          (forever, when)
+import           Control.Exception.Safe (SomeException, catch)
+import           Control.Monad          (forever, void, when)
 import           Control.Monad.State    (StateT (StateT), runStateT)
 import           Data.Maybe             (fromMaybe)
 import qualified Data.Text              as T
-import           Database.SQLite.Simple (Connection, Only (Only), close,
-                                         execute, execute_, open)
+import           Database.SQLite.Simple (Connection, Only (Only), execute,
+                                         execute_, withConnection)
 import           System.Clipboard       (getClipboardString)
 import           System.Console.GetOpt  (ArgDescr (NoArg, ReqArg),
                                          ArgOrder (RequireOrder),
@@ -19,6 +19,7 @@ import           System.Directory       (XdgDirectory (XdgCache),
                                          getXdgDirectory)
 import           System.Environment     (getArgs, getProgName)
 import           System.FilePath        (takeDirectory)
+import           System.IO              (hPrint, stderr)
 
 data Options = Options {
       optDatabase :: String
@@ -94,13 +95,10 @@ main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
     createDirectoryIfMissing True $ takeDirectory $ optDatabase opts
-    _ <- bracket
-        (open $ optDatabase opts)
-        (\conn -> do
-            when (optVerbose opts) $ putStrLn "close ..."
-            close conn)
+    withConnection
+        (optDatabase opts)
         (\conn -> do
             create conn
             s <- T.pack . fromMaybe "" <$> getClipboardString
-            runStateT (forever (StateT (run opts conn))) s)
-    return ()
+            void $ runStateT (forever (StateT (run opts conn))) s)
+    `catch` (hPrint stderr :: SomeException -> IO ())
