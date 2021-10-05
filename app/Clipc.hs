@@ -2,13 +2,14 @@
 
 module Main where
 
-import           Control.Exception      (bracket)
+import           Control.Exception.Safe (SomeException, catch)
 import           Control.Monad          (when)
 import           Data.Functor           ((<&>))
 import qualified Data.Text              as T
 import           Database.SQLite.Simple (Connection, FromRow (fromRow),
-                                         Only (Only, fromOnly), close, execute,
-                                         execute_, field, open, query, query_)
+                                         Only (Only, fromOnly), execute,
+                                         execute_, field, query, query_,
+                                         withConnection)
 import           System.Clipboard       (getClipboardString, setClipboardString)
 import           System.Console.GetOpt  (ArgDescr (NoArg, ReqArg),
                                          ArgOrder (RequireOrder),
@@ -16,6 +17,7 @@ import           System.Console.GetOpt  (ArgDescr (NoArg, ReqArg),
 import           System.Directory       (XdgDirectory (XdgCache),
                                          getXdgDirectory)
 import           System.Environment     (getArgs, getProgName)
+import           System.IO              (hPrint, stderr)
 import           Text.Printf            (printf)
 
 data Flag = FlagNone | FlagList | FlagSelect Int | FlagDelete Int | FlagClear
@@ -111,15 +113,11 @@ main :: IO ()
 main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
-    bracket
-        (open $ optDatabase opts)
-        (\conn -> do
-            when (optVerbose opts) $ putStrLn "close ..."
-            close conn)
-        (\conn ->
-            case optFlag opts of
-                FlagNone     -> return ()
-                FlagList     -> list conn
-                FlagClear    -> clear conn
-                FlagSelect n -> select conn n
-                FlagDelete n -> delete conn n)
+    withConnection (optDatabase opts)
+        (\conn -> case optFlag opts of
+            FlagNone     -> return ()
+            FlagList     -> list conn
+            FlagClear    -> clear conn
+            FlagSelect n -> select conn n
+            FlagDelete n -> delete conn n)
+    `catch` (hPrint stderr :: SomeException -> IO ())
