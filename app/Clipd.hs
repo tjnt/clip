@@ -3,7 +3,6 @@
 module Main where
 
 import           Control.Concurrent     (threadDelay)
-import           Control.Exception.Safe (SomeException, catch)
 import           Control.Monad          (forever, void, when)
 import           Control.Monad.State    (StateT (StateT), runStateT)
 import           Data.Maybe             (fromMaybe)
@@ -19,7 +18,6 @@ import           System.Directory       (XdgDirectory (XdgCache),
                                          getXdgDirectory)
 import           System.Environment     (getArgs, getProgName)
 import           System.FilePath        (takeDirectory)
-import           System.IO              (hPrint, stderr)
 
 data Options = Options {
       optDatabase :: String
@@ -101,4 +99,3 @@ main = do
             create conn
             s <- T.pack . fromMaybe "" <$> getClipboardString
             void $ runStateT (forever (StateT (run opts conn))) s)
-    `catch` (hPrint stderr :: SomeException -> IO ())

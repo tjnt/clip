@@ -2,7 +2,6 @@
 
 module Main where
 
-import           Control.Exception.Safe (SomeException, catch)
 import           Control.Monad          (when)
 import           Data.Functor           ((<&>))
 import qualified Data.Text              as T
@@ -17,7 +16,6 @@ import           System.Console.GetOpt  (ArgDescr (NoArg, ReqArg),
 import           System.Directory       (XdgDirectory (XdgCache),
                                          getXdgDirectory)
 import           System.Environment     (getArgs, getProgName)
-import           System.IO              (hPrint, stderr)
 import           Text.Printf            (printf)
 
 data Flag = FlagNone | FlagList | FlagSelect Int | FlagDelete Int | FlagClear
@@ -120,4 +118,3 @@ main = do
             FlagClear    -> clear conn
             FlagSelect n -> select conn n
             FlagDelete n -> delete conn n)
-    `catch` (hPrint stderr :: SomeException -> IO ())
