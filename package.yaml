@@ -55,6 +55,7 @@ executables:
     dependencies:
     - mtl
     - filepath
+    - direct-sqlite
     - clip
 
 tests:

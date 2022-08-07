@@ -2,22 +2,27 @@
 
 module Main where
 
-import           Control.Concurrent     (threadDelay)
-import           Control.Monad          (forever, void, when)
-import           Control.Monad.State    (StateT (StateT), runStateT)
-import           Data.Maybe             (fromMaybe)
-import qualified Data.Text              as T
-import           Database.SQLite.Simple (Connection, Only (Only), execute,
-                                         execute_, withConnection)
-import           System.Clipboard       (getClipboardString)
-import           System.Console.GetOpt  (ArgDescr (NoArg, ReqArg),
-                                         ArgOrder (RequireOrder),
-                                         OptDescr (Option), getOpt, usageInfo)
-import           System.Directory       (XdgDirectory (XdgCache),
-                                         createDirectoryIfMissing,
-                                         getXdgDirectory)
-import           System.Environment     (getArgs, getProgName)
-import           System.FilePath        (takeDirectory)
+import           Control.Concurrent              (threadDelay)
+import           Control.Exception               (catch, throw)
+import           Control.Monad                   (forever, void, when)
+import           Control.Monad.State             (StateT (StateT), runStateT)
+import           Data.Maybe                      (fromMaybe)
+import qualified Data.Text                       as T
+import           Database.SQLite.Simple          (Connection, Only (Only),
+                                                  SQLError (sqlError), execute,
+                                                  execute_, withConnection)
+import           Database.SQLite3.Bindings.Types (Error (ErrorBusy))
+import           System.Clipboard                (getClipboardString)
+import           System.Console.GetOpt           (ArgDescr (NoArg, ReqArg),
+                                                  ArgOrder (RequireOrder),
+                                                  OptDescr (Option), getOpt,
+                                                  usageInfo)
+import           System.Directory                (XdgDirectory (XdgCache),
+                                                  createDirectoryIfMissing,
+                                                  getXdgDirectory)
+import           System.Environment              (getArgs, getProgName)
+import           System.FilePath                 (takeDirectory)
+import           System.IO                       (hPrint, stderr)
 
 data Options = Options {
       optDatabase :: String
@@ -82,13 +87,18 @@ run opts conn s = do
     s' <- T.pack . fromMaybe "" <$> getClipboardString
     when (check s s') $ do
         when (optVerbose opts) $ putStrLn $ T.unpack s'
-        insertRecord conn s'
+        insertRecord conn s' `catch` sqlErrorHandler
     threadDelay $ optInterval opts * 1000
     return ((), s')
   where
     check old new = (not . T.null) new
                  && (not . T.null . T.strip) new
                  && (T.length old /= T.length new || old /= new)
+    sqlErrorHandler :: SQLError -> IO ()
+    sqlErrorHandler e =
+        case sqlError e of
+            ErrorBusy -> hPrint stderr e
+            _         -> throw e
 
 main :: IO ()
 main = do
