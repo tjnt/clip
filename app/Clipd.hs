@@ -5,7 +5,7 @@ module Main where
 import           Control.Concurrent              (threadDelay)
 import           Control.Exception               (catch, throw)
 import           Control.Monad                   (forever, void, when)
-import           Control.Monad.State             (StateT (StateT), runStateT)
+import           Control.Monad.State.Strict      (StateT (StateT), runStateT)
 import           Data.Maybe                      (fromMaybe)
 import qualified Data.Text                       as T
 import           Database.SQLite.Simple          (Connection, Only (Only),
