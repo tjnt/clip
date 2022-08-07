@@ -2,7 +2,7 @@
 
 module Main where
 
-import           Control.Monad          (when)
+import           Control.Monad          (unless, when)
 import           Data.Functor           ((<&>))
 import qualified Data.Text              as T
 import           Database.SQLite.Simple (Connection, FromRow (fromRow),
@@ -99,13 +99,9 @@ select conn n = do
     rs <- query conn "\
         \ SELECT value FROM history WHERE id = ?;"
         $ Only n :: IO [Only T.Text]
-    case rs of
-        [] -> return ()
-        _  -> let r = T.unpack . fromOnly . head $ rs
-               in getClipboardString >>= \m ->
-                     when (Just r /= m) $ do
-                         setClipboardString r
-                         delete conn n
+    unless (null rs) $ getClipboardString >>= \c ->
+        let r = T.unpack . fromOnly . head $ rs
+         in when (Just r /= c) $ delete conn n >> setClipboardString r
 
 main :: IO ()
 main = do
