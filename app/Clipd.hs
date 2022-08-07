@@ -86,7 +86,9 @@ run opts conn s = do
     threadDelay $ optInterval opts * 1000
     return ((), s')
   where
-    check old new = old /= new && (not . T.null . T.strip) new
+    check old new = (not . T.null) new
+                 && (not . T.null . T.strip) new
+                 && (T.length old /= T.length new || old /= new)
 
 main :: IO ()
 main = do
