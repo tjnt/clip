@@ -84,7 +84,8 @@ create conn =
 
 run :: Options -> Connection -> T.Text -> IO ((), T.Text)
 run opts conn s = do
-    s' <- T.pack . fromMaybe "" <$> getClipboardString
+    cb <- getClipboardString
+    let s' = T.pack . fromMaybe "" $! cb
     when (check s s') $ do
         when (optVerbose opts) $ putStrLn $ T.unpack s'
         insertRecord conn s' `catch` sqlErrorHandler
