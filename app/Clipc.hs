@@ -50,7 +50,7 @@ options =
         "select clipboard record"
     , Option ['d'] ["delete"]
         (ReqArg ((\v opts -> opts { optFlag = FlagDelete v }) . read) "ID")
-        "select clipboard record"
+        "delete clipboard record"
     , Option [] ["remove-dups"]
         (NoArg (\opts -> opts { optFlag = FlagRemoveDups }))
         "remove duplicate clipboard history"
