@@ -18,7 +18,7 @@ import           System.Directory       (XdgDirectory (XdgCache),
 import           System.Environment     (getArgs, getProgName)
 import           Text.Printf            (printf)
 
-data Flag = FlagNone | FlagList | FlagSelect Int | FlagDelete Int | FlagClear
+data Flag = FlagNone | FlagList | FlagSelect Int | FlagDelete Int | FlagRemoveDups | FlagClear
     deriving Show
 
 data Options = Options {
@@ -51,6 +51,9 @@ options =
     , Option ['d'] ["delete"]
         (ReqArg ((\v opts -> opts { optFlag = FlagDelete v }) . read) "ID")
         "select clipboard record"
+    , Option [] ["remove-dups"]
+        (NoArg (\opts -> opts { optFlag = FlagRemoveDups }))
+        "remove duplicate clipboard history"
     , Option ['D'] ["database"]
         (ReqArg (\v opts -> opts { optDatabase = v }) "FILE")
         "database file path"
@@ -103,14 +106,26 @@ select conn n = do
         let r = T.unpack . fromOnly . head $ rs
          in when (Just r /= c) $ delete conn n >> setClipboardString r
 
+removeDups :: Connection -> IO ()
+removeDups conn = do
+    rs <- query_ conn "\
+        \ SELECT MIN(id), MIN(time), value FROM history \
+        \ GROUP BY value ORDER BY id;" :: IO [History]
+    clear conn
+    mapM_ (\(History _ time value) ->
+        execute conn "\
+            \ INSERT INTO history (time, value) VALUES (?, ?);"
+        (time, value)) rs
+
 main :: IO ()
 main = do
     opts <- parseArgs
     when (optVerbose opts) $ print opts
     withConnection (optDatabase opts)
         (\conn -> case optFlag opts of
-            FlagNone     -> return ()
-            FlagList     -> list conn
-            FlagClear    -> clear conn
-            FlagSelect n -> select conn n
-            FlagDelete n -> delete conn n)
+            FlagNone       -> return ()
+            FlagList       -> list conn
+            FlagClear      -> clear conn
+            FlagSelect n   -> select conn n
+            FlagDelete n   -> delete conn n
+            FlagRemoveDups -> removeDups conn)
